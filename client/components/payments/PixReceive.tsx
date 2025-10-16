@@ -50,7 +50,7 @@ export function PixReceive({ onDone }) {
     setQrId("");
     setStatus("");
     try {
-      const resp = await fetch("https://payment-platform-production-57a2.up.railway.app/transactions/criar-cobranca-pix", {
+      const resp = await fetch("https://payment-platform-production-57a2.up.railway.app/transactions/criar-cobranca-pix/backup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ receiverEmail: currentEmail, amount: v }),
