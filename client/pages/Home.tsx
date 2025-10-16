@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useIndividualUser, useLegalEntityUser } from "@/context/user";
 import { useTransactions } from "@/context/transactions";
@@ -28,7 +28,7 @@ export default function Home() {
   const currentUser = individualUser || legalEntityUser;
 
   // API base URL
-  const API_BASE_URL = "https://payment-platform-production-57a2.up.railway.app/transactions";
+  const API_BASE_URL = "https://payment-platform-production-57a2.up.railway.app";
 
   // User name
   let userName = "";
@@ -56,7 +56,40 @@ export default function Home() {
   // Balance
   const displayBalance = currentUser?.balance ?? 0;
 
+  // ---------------------------------------------------------------------
+  // 🔄 ATUALIZAR SALDO AUTOMATICAMENTE QUANDO AS TRANSAÇÕES MUDAM
+  // ---------------------------------------------------------------------
+  useEffect(() => {
+    const fetchUpdatedBalance = async () => {
+      if (!currentUser?.email) return;
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/users/balance?email=${currentUser.email}`
+        );
+
+        if (!response.ok) throw new Error("Erro ao buscar saldo atualizado");
+
+        const data = await response.json();
+
+        // Atualiza o saldo no contexto de usuário
+        if (individualUser) {
+          updateIndividualUser({ balance: data.balance });
+        } else if (legalEntityUser) {
+          updateLegalEntityUser({ balance: data.balance });
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar saldo:", error);
+      }
+    };
+
+    // Atualiza sempre que o histórico de transações mudar
+    fetchUpdatedBalance();
+  }, [transactions]);
+
+  // ---------------------------------------------------------------------
   // DEPÓSITO
+  // ---------------------------------------------------------------------
   const handleDeposit = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       alert("Informe um valor válido para depósito");
@@ -64,7 +97,7 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch("https://payment-platform-production-57a2.up.railway.app/transactions/deposito", {
+      const response = await fetch(`${API_BASE_URL}/transactions/deposito`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -77,7 +110,7 @@ export default function Home() {
 
       const data = await response.json();
 
-      // Atualiza o saldo no backend e no estado local através do contexto
+      // Atualiza o saldo local rapidamente
       const newBalance = displayBalance + parseFloat(amount);
       if (individualUser) {
         updateIndividualUser({ balance: newBalance });
@@ -85,7 +118,7 @@ export default function Home() {
         updateLegalEntityUser({ balance: newBalance });
       }
 
-      // Adiciona transação no histórico
+      // Adiciona transação ao histórico
       addTransaction({ ...data, amount: parseFloat(amount) });
 
       setAmount("");
@@ -96,7 +129,9 @@ export default function Home() {
     }
   };
 
+  // ---------------------------------------------------------------------
   // SAQUE
+  // ---------------------------------------------------------------------
   const handleWithdraw = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       alert("Informe um valor válido para saque");
@@ -104,7 +139,7 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch("https://payment-platform-production-57a2.up.railway.app/transactions/saque", {
+      const response = await fetch(`${API_BASE_URL}/transactions/saque`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -117,7 +152,7 @@ export default function Home() {
 
       const data = await response.json();
 
-      // Atualiza o saldo no backend e no estado local através do contexto
+      // Atualiza o saldo local rapidamente
       const newBalance = displayBalance - parseFloat(amount);
       if (individualUser) {
         updateIndividualUser({ balance: newBalance });
@@ -136,6 +171,9 @@ export default function Home() {
     }
   };
 
+  // ---------------------------------------------------------------------
+  // INTERFACE
+  // ---------------------------------------------------------------------
   return (
     <main className="flex-1">
       <div className="max-w-[1280px] mx-auto px-4 py-8 md:px-8 lg:px-12">
